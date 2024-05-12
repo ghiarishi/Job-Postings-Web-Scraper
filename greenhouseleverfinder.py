@@ -5,8 +5,6 @@ from googlesearch import search
 import urllib.parse
 import pandas as pd
 
-
-
 def get_google_search_results(query, num_results=5, time='h'):
     # Construct the search URL
     search_query = urllib.parse.quote_plus(query)
@@ -31,11 +29,42 @@ def get_google_search_results(query, num_results=5, time='h'):
             link = anchor['href']
             # Filter URLs containing "jobs"
             # if "jobs" in link.lower():
-            search_results.append(link)
+
+            search_results.append(clean_url(link))
             # print(f"URL: {link}")
     
     return search_results
- 
+
+def clean_url(job_url):
+
+    if "lever.co" in job_url:
+        # Split the path after the netloc to preserve the base URL
+        path_parts = job_url.split('/')
+        if len(path_parts) > 4:
+            cleaned_path = '/'.join(path_parts[:5])  # Limit to the first 5 parts
+        else:
+            cleaned_path = '/'.join(path_parts)
+        
+        # Construct the cleaned URL
+        netloc = urlsplit(job_url).netloc
+        cleaned_url = f"{cleaned_path}"
+    
+    elif "greenhouse.io" in job_url:
+        # Cut off at the first non-numeric character after "jobs/"
+        path_parts = job_url.split("/")
+        if len(path_parts) > 5:
+            # Ensure the 6th item is numeric
+            numeric_sixth_item = ''.join([char for char in path_parts[5] if char.isnumeric()])
+            # Concatenate the first 6 items
+            cleaned_path = '/'.join(path_parts[:5] + [numeric_sixth_item])
+            cleaned_url = f"{cleaned_path}"
+        else:
+            cleaned_url = job_url
+    else:
+        cleaned_url = job_url
+    
+    return cleaned_url
+
 def get_job_details(url):
     response = requests.get(url)
     if response.status_code == 200:
@@ -54,11 +83,21 @@ def get_job_details(url):
             job_details['location'] = soup.find('div', class_='location').text.strip() if soup.find('div', class_='location') else job_details['location']
         
         elif 'lever' in url:
-            job_details['company_name'] = soup.find('div', class_='posting-headline').find('h2').text.strip() if soup.find('div', class_='posting-headline') and soup.find('div', class_='posting-headline').find('h2') else job_details['company_name']
-            job_details['role_title'] = soup.find('h2', class_='posting-title').text.strip() if soup.find('h2', class_='posting-title') else job_details['role_title']
+            # Extract company name and role title from the title tag
+            title_tag = soup.find('title').text if soup.find('title') else ''
+            if title_tag:
+                parts = title_tag.split(' - ')
+                if len(parts) == 2:
+                    job_details['company_name'] = parts[0].strip()
+                    job_details['role_title'] = parts[1].strip()
+            
+            # Extract location from the div with class including "location"
             location_tag = soup.find('div', class_='posting-categories')
             if location_tag:
-                job_details['location'] = location_tag.find('a').text.strip() if location_tag.find('a') else job_details['location']
+                location_div = location_tag.find('div', class_='location')
+                if location_div:
+                    job_details['location'] = location_div.text.strip()
+        
         return job_details
     else:
         print(f"Failed to retrieve the job page for URL: {url}")
@@ -82,46 +121,6 @@ for url in urls:
 
 save_to_excel(job_list, 'job_listings.xlsx')
 print("Job listings saved to job_listings.xlsx")
-    
-
-# def clean_url(url):
-#     # Parse the query parameters
-#     query = urlsplit(url).query
-#     parsed_query = parse_qs(query)
-    
-#     # Extract the actual job link from the 'q' parameter
-#     if 'q' in parsed_query:
-#         job_url = parsed_query['q'][0]
-#     else:
-#         return url  # Return the original URL if 'q' is not present
-
-#     if "lever.co" in job_url:
-#         # Split the path after the netloc to preserve the base URL
-#         path_parts = job_url.split('/')
-#         if len(path_parts) > 4:
-#             cleaned_path = '/'.join(path_parts[:5])  # Limit to the first 5 parts
-#         else:
-#             cleaned_path = '/'.join(path_parts)
-        
-#         # Construct the cleaned URL
-#         netloc = urlsplit(job_url).netloc
-#         cleaned_url = f"{cleaned_path}"
-    
-#     elif "greenhouse.io" in job_url:
-#         # Cut off at the first non-numeric character after "jobs/"
-#         path_parts = job_url.split("/")
-#         if len(path_parts) > 5:
-#             # Ensure the 6th item is numeric
-#             numeric_sixth_item = ''.join([char for char in path_parts[5] if char.isnumeric()])
-#             # Concatenate the first 6 items
-#             cleaned_path = '/'.join(path_parts[:5] + [numeric_sixth_item])
-#             cleaned_url = f"{cleaned_path}"
-#         else:
-#             cleaned_url = job_url
-#     else:
-#         cleaned_url = job_url
-    
-#     return cleaned_url
 
 # # URL of the page you want to scrape
 # url = 'https://www.google.com/search?q=(engineer+OR+software)+(machine+learning+OR+%22software+engineer%22+OR+%22software+develop%22+OR+%22natural+language+processing%22+OR+%22computer+vision%22+OR+%22perception%22)+site%3Alever.co+OR+site%3Agreenhouse.io+location%3AUS+-staff+-senior+-principal+-manager+-lead&oq=(engineer+OR+software)+(machine+learning+OR+%22software+engineer%22+OR+%22software+develop%22+OR+%22natural+language+processing%22+OR+%22computer+vision%22+OR+%22perception%22)+site%3Alever.co+OR+site%3Agreenhouse.io+location%3AUS+-staff+-senior+-principal+-manager+-lead&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIGCAEQRRg7MgYIAhBFGDvSAQgzODIzajBqN6gCALACAA&sourceid=chrome&ie=UTF-8#ip=1'
