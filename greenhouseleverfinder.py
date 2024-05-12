@@ -7,10 +7,10 @@ import pandas as pd
 
 
 
-def get_google_search_results(query, num_results=5):
+def get_google_search_results(query, num_results=5, time='h'):
     # Construct the search URL
     search_query = urllib.parse.quote_plus(query)
-    url = f"https://www.google.com/search?q={search_query}&num={num_results}"
+    url = f"https://www.google.com/search?q={search_query}&num={num_results}&tbs=qdr:{time}"
     
     # Set headers to mimic a browser visit
     headers = {
@@ -44,14 +44,15 @@ def get_job_details(url):
             'company_name': 'N/A',
             'role_title': 'N/A',
             'location': 'N/A',
-            'date_posted': 'N/A',
             'url': url
         }
         if 'greenhouse' in url:
-            job_details['company_name'] = soup.find('div', class_='level-0').text.strip() if soup.find('div', class_='level-0') else job_details['company_name']
-            job_details['role_title'] = soup.find('h1').text.strip() if soup.find('h1') else job_details['role_title']
+            # Update extraction logic based on the new HTML structure
+            temp_company_name = soup.find('span', class_='company-name').text.strip() if soup.find('span', class_='company-name') else job_details['company_name']
+            job_details['company_name'] = temp_company_name[3:]
+            job_details['role_title'] = soup.find('h1', class_='app-title').text.strip() if soup.find('h1', class_='app-title') else job_details['role_title']
             job_details['location'] = soup.find('div', class_='location').text.strip() if soup.find('div', class_='location') else job_details['location']
-            job_details['date_posted'] = soup.find('span', class_='posted-date').text.strip() if soup.find('span', class_='posted-date') else job_details['date_posted']
+        
         elif 'lever' in url:
             job_details['company_name'] = soup.find('div', class_='posting-headline').find('h2').text.strip() if soup.find('div', class_='posting-headline') and soup.find('div', class_='posting-headline').find('h2') else job_details['company_name']
             job_details['role_title'] = soup.find('h2', class_='posting-title').text.strip() if soup.find('h2', class_='posting-title') else job_details['role_title']
@@ -69,7 +70,9 @@ def save_to_excel(data, filename):
 
 # Example usage
 query = "(engineer OR software) (machine learning OR software engineer OR software develop OR natural language processing OR computer vision OR perception) site:lever.co OR site:greenhouse.io location:US -staff -senior -Sr. -principal -manager -lead"
-urls = get_google_search_results(query,30)
+num_results = input("Enter the number of results: ")
+time_range = input("How recent should the results be: ")
+urls = get_google_search_results(query,num_results,time_range)
 
 job_list = []
 for url in urls:
