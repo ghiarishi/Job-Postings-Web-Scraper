@@ -4,11 +4,12 @@ from urllib.parse import urlsplit
 import urllib.parse
 import pandas as pd
 import re
+import time
 
-def doGoogleSearch(query, num_results, time):
+def doGoogleSearch(query, numResults, timePeriod, start=0):
     # Construct the search URL
-    search_query = urllib.parse.quote_plus(query)
-    url = f"https://www.google.com/search?q={search_query}&num={num_results}&tbs=qdr:{time}"
+    searchQuery = urllib.parse.quote_plus(query)
+    url = f"https://www.google.com/search?q={searchQuery}&num={numResults}&start={start}&tbs=qdr:{timePeriod}"
     
     # Set headers to mimic a browser visit
     headers = {
@@ -18,6 +19,9 @@ def doGoogleSearch(query, num_results, time):
     # Make the request to Google
     response = requests.get(url, headers=headers)
     
+    if response.status_code != 200:
+        print(f"Failed to retrieve results: {response.status_code}")
+
     # Parse the HTML content
     soup = BeautifulSoup(response.text, "html.parser")
     
@@ -115,6 +119,9 @@ def inUSA(location):
     return False
 
 def isRelevantRole(jobRole):
+    if jobRole == 'N/A': 
+        return True
+    
     keywords = ["computer", "vision", "perception", "software", "machine", "learning", 
                 "artificial", "intelligence", "nlp", "natural", "language", "processing", 
                 "llm", "cv", "development", "ai", "ml", "sde", "swe", "backend",
@@ -141,9 +148,18 @@ def saveToExcel(data, filename):
 
 query = "(intitle:engineer OR intitle:scientist OR intitle:researcher OR intitle:analyst OR intitle:architect) site:lever.co OR site:greenhouse.io -intitle:staff -intitle:senior -intitle:manager -intitle:lead -intitle:principal -intitle:director"
 
-num_results = input("Enter the number of results: ")
-time_range = input("How recent should the results be: ")
-urls = doGoogleSearch(query,num_results,time_range)
+numResults = input("Enter the number of results: ")
+timePeriod = input("How recent should the results be: ")
+
+resultsPerPage = 100  # As google generally returns atmost 100 results at a time
+
+urls = []
+
+for start in range(0, int(numResults), int(resultsPerPage)):
+    results = doGoogleSearch(query, resultsPerPage, timePeriod, start)
+    urls.extend(results)
+    print(f"Fetched {len(results)} results starting from {start}")
+    time.sleep(2) # get by google rate limit
 
 print(len(urls))
 
@@ -151,9 +167,9 @@ jobList = []
 for url in urls:
     jobInfo = getJobInfo(url)
     if jobInfo:
-        if inUSA(jobInfo['location']):
-            if isRelevantRole(jobInfo['jobRole']):
-                jobList.append(jobInfo)   
+        if inUSA(jobInfo['location']) and isRelevantRole(jobInfo['jobRole']):
+            jobList.append(jobInfo)   
 
+print(len(jobList), " relevant jobs found!")
 saveToExcel(jobList, 'job_listings.xlsx')
 print("Job listings saved to job_listings.xlsx")
