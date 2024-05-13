@@ -40,13 +40,12 @@ def cleanURL(job_url):
     if "lever.co" in job_url:
         # Split the path after the netloc to preserve the base URL
         pathParts = job_url.split('/')
+        pathParts[4] = pathParts[4][:36] # clean up the job number
         if len(pathParts) > 4:
             cleaned_path = '/'.join(pathParts[:5])  # Limit to the first 5 parts
         else:
             cleaned_path = '/'.join(pathParts)
         
-        # Construct the cleaned URL
-        netloc = urlsplit(job_url).netloc
         cleaned_url = f"{cleaned_path}"
     
     elif "greenhouse.io" in job_url:
@@ -57,7 +56,7 @@ def cleanURL(job_url):
             numeric_sixth_item = ''.join([char for char in pathParts[5] if char.isnumeric()])
             # Concatenate the first 6 items
             cleaned_path = '/'.join(pathParts[:5] + [numeric_sixth_item])
-            cleaned_url = f"{cleaned_path}"
+            cleaned_url = f"{cleaned_path}" 
         else:
             cleaned_url = job_url
     else:
@@ -82,15 +81,23 @@ def getJobInfo(url):
             jobDetails['companyName'] = tempCompanyName[3:]
             jobDetails['jobRole'] = soup.find('h1', class_='app-title').text.strip() if soup.find('h1', class_='app-title') else jobDetails['jobRole']
             jobDetails['location'] = soup.find('div', class_='location').text.strip() if soup.find('div', class_='location') else jobDetails['location']
-        
+
+            if jobDetails['companyName'] == "" or jobDetails['companyName'] == "N/A": 
+                pathParts = url.split('/')
+                jobDetails['companyName'] = pathParts[3]
+
         elif 'lever' in url:
             # Extract company name and role title from the title tag
             titleTag = soup.find('title').text if soup.find('title') else ''
             if titleTag:
                 parts = titleTag.split(' - ')
-                if len(parts) == 2:
-                    jobDetails['companyName'] = parts[0].strip()
-                    jobDetails['jobRole'] = parts[1].strip()
+                
+                jobDetails['companyName'] = parts[0].strip()
+                jobDetails['jobRole'] = parts[1].strip()
+
+                if jobDetails['companyName'] == "" or jobDetails['companyName'] == "N/A": 
+                    pathParts = url.split('/')
+                    jobDetails['companyName'] = pathParts[3]
             
             # Extract location from the div with class including "location"
             location_tag = soup.find('div', class_='posting-categories')
@@ -160,8 +167,6 @@ for start in range(0, int(numResults), int(resultsPerPage)):
     urls.extend(results)
     print(f"Fetched {len(results)} results starting from {start}")
     time.sleep(2) # get by google rate limit
-
-print(len(urls))
 
 jobList = []
 for url in urls:
