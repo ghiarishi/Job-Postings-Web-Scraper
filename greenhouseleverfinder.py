@@ -5,6 +5,7 @@ import urllib.parse
 import pandas as pd
 import re
 import time
+import math
 
 def doGoogleSearch(query, numResults, timePeriod, start=0):
     # Construct the search URL
@@ -162,11 +163,25 @@ resultsPerPage = 100  # As google generally returns atmost 100 results at a time
 
 urls = []
 
-for start in range(0, int(numResults), int(resultsPerPage)):
-    results = doGoogleSearch(query, resultsPerPage, timePeriod, start)
-    urls.extend(results)
-    print(f"Fetched {len(results)} results starting from {start}")
-    time.sleep(2) # get by google rate limit
+if numResults == "max": 
+    i = 0
+    while True:
+        results = doGoogleSearch(query, resultsPerPage, timePeriod, i*resultsPerPage)
+        urls.extend(results)
+        print(f"Fetched {len(results)} results starting from {i*resultsPerPage}")
+        time.sleep(2) # get by google rate limit
+        if len(results) <= resultsPerPage: 
+            break
+        i+=1
+else: 
+    remaining = int(numResults)
+    for start in range(math.ceil(int(numResults)/resultsPerPage)):
+        resultsToReturn = min(remaining,resultsPerPage)
+        results = doGoogleSearch(query, resultsToReturn, timePeriod, start*resultsPerPage)
+        urls.extend(results)
+        print(f"Fetched {len(results)} results starting from {start*resultsPerPage}")
+        remaining -= resultsToReturn
+        time.sleep(2) # get by google rate limit
 
 jobList = []
 for url in urls:
