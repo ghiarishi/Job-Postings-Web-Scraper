@@ -109,7 +109,7 @@ def getJobInfo(url):
         
         return jobDetails
     else:
-        print(f"Failed to retrieve the job page for URL: {url}")
+        # print(f"Failed to retrieve the job page for URL: {url}")
         return None
 
 def inUSA(location):
@@ -133,10 +133,10 @@ def isRelevantRole(jobRole):
     keywords = ["computer", "vision", "perception", "software", "machine", "learning", 
                 "artificial", "intelligence", "nlp", "natural", "language", "processing", 
                 "llm", "cv", "development", "ai", "ml", "sde", "swe", "backend",
-                "frontend", "fullstack", "full", "stack", "analyst", "architect", "researcher",
-                 "engineer", "scientist"]
-    ignore = ["staff", "sr", "senior", "manager", "lead", "principal", "director", "sales",
-              "head", "mechanical", "ii", "iii", "iv", "l2", "l3"]
+                "frontend", "fullstack", "full", "stack", "architect", "researcher",
+                 "engineer", "scientist", "devops", "mlops", "cloud", "system", "systems"]
+    ignore = ["staff", "sr.", "sr", "senior", "manager", "lead", "principal", "director", "sales",
+              "head", "mechanical", "ii", "iii", "iv", "l2", "l3", "management", "consultant", "phd"]
 
     delimiters = [",", "/", "-","(", ")", " "]
     pattern = '|'.join(map(re.escape, delimiters))
@@ -154,7 +154,7 @@ def saveToExcel(data, filename):
     df = pd.DataFrame(data)
     df.to_excel(filename, index=False)
 
-query = "(intitle:engineer OR intitle:scientist OR intitle:researcher OR intitle:analyst OR intitle:architect) site:lever.co OR site:greenhouse.io -intitle:staff -intitle:senior -intitle:manager -intitle:lead -intitle:principal -intitle:director"
+query = "(intitle:engineer OR intitle:scientist OR intitle:researcher OR intitle:architect) site:lever.co OR site:greenhouse.io -intitle:staff -intitle:senior -intitle:manager -intitle:lead -intitle:principal -intitle:director"
 
 numResults = input("Enter the number of results: ")
 timePeriod = input("How recent should the results be: ")
@@ -163,6 +163,7 @@ resultsPerPage = 100  # As google generally returns atmost 100 results at a time
 
 urls = []
 
+# if max, then stop fetching jobs when under 100 are returned
 if numResults == "max": 
     i = 0
     while True:
@@ -170,9 +171,11 @@ if numResults == "max":
         urls.extend(results)
         print(f"Fetched {len(results)} results starting from {i*resultsPerPage}")
         time.sleep(2) # get by google rate limit
-        if len(results) <= resultsPerPage: 
+        if len(results) < resultsPerPage: 
             break
         i+=1
+
+# if number given, continue fetching till number reached
 else: 
     remaining = int(numResults)
     for start in range(math.ceil(int(numResults)/resultsPerPage)):
@@ -184,12 +187,20 @@ else:
         time.sleep(2) # get by google rate limit
 
 jobList = []
+jobListNoDetails = []
+
 for url in urls:
     jobInfo = getJobInfo(url)
     if jobInfo:
         if inUSA(jobInfo['location']) and isRelevantRole(jobInfo['jobRole']):
-            jobList.append(jobInfo)   
+            if jobInfo['jobRole'] != "N/A": 
+                jobList.append(jobInfo)   
+            else: 
+                jobListNoDetails.append(jobInfo)
 
 print(len(jobList), " relevant jobs found!")
-saveToExcel(jobList, 'job_listings.xlsx')
-print("Job listings saved to job_listings.xlsx")
+print(len(jobListNoDetails), " relevant (maybe) jobs found!")
+
+saveToExcel(jobList, 'jobs.xlsx')
+saveToExcel(jobListNoDetails, 'jobsNoDetails.xlsx')
+print("Job listings to jobs.xlsx and jobsNoDetails.xlsx")
