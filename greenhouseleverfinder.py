@@ -7,26 +7,27 @@ import re
 import time
 import math
 
-def doGoogleSearch(query, numResults, timePeriod, start=0):
-    # Construct the search URL
+def doGoogleSearch(query, numResults, timePeriod, start):
+
+    # construct search query
     searchQuery = urllib.parse.quote_plus(query)
     url = f"https://www.google.com/search?q={searchQuery}&num={numResults}&start={start}&tbs=qdr:{timePeriod}"
     
-    # Set headers to mimic a browser visit
+    # headers to mimic browser visit
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
     
-    # Make the request to Google
+    # google request
     response = requests.get(url, headers=headers)
     
     if response.status_code != 200:
         print(f"Failed to retrieve results: {response.status_code}")
 
-    # Parse the HTML content
+    # parse html content
     soup = BeautifulSoup(response.text, "html.parser")
     
-    # Extract search result URLs
+    # extract urls
     searchResults = []
     for g in soup.find_all('div', class_='g'):
         anchor = g.find('a')
@@ -37,25 +38,28 @@ def doGoogleSearch(query, numResults, timePeriod, start=0):
     return searchResults
 
 def cleanURL(job_url):
-
     if "lever.co" in job_url:
-        # Split the path after the netloc to preserve the base URL
+
+        # split url, remove all characters after the job id
         pathParts = job_url.split('/')
-        pathParts[4] = pathParts[4][:36] # clean up the job number
+        pathParts[4] = pathParts[4][:36] 
+
+        # if more than 4 parts, keep only the first 5
         if len(pathParts) > 4:
-            cleaned_path = '/'.join(pathParts[:5])  # Limit to the first 5 parts
+            cleaned_path = '/'.join(pathParts[:5])  
         else:
             cleaned_path = '/'.join(pathParts)
         
         cleaned_url = f"{cleaned_path}"
     
     elif "greenhouse.io" in job_url:
-        # Cut off at the first non-numeric character after "jobs/"
+        
+        # cut off at the first non numeric character after "jobs/"
         pathParts = job_url.split("/")
         if len(pathParts) > 5:
-            # Ensure the 6th item is numeric
+        
+            # ensure the 6th item is numeric, then add to rest of the url
             numeric_sixth_item = ''.join([char for char in pathParts[5] if char.isnumeric()])
-            # Concatenate the first 6 items
             cleaned_path = '/'.join(pathParts[:5] + [numeric_sixth_item])
             cleaned_url = f"{cleaned_path}" 
         else:
@@ -70,46 +74,48 @@ def getJobInfo(url):
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, 'html.parser')
         jobDetails = {
-            'companyName': 'N/A',
-            'jobRole': 'N/A',
-            'location': 'N/A',
+            'Company Name': 'N/A',
+            'Job Title': 'N/A',
+            'Location': 'N/A',
             'url': url
         }
 
         if 'greenhouse' in url:
-            # Update extraction logic based on the new HTML structure
-            tempCompanyName = soup.find('span', class_='company-name').text.strip() if soup.find('span', class_='company-name') else jobDetails['companyName']
-            jobDetails['companyName'] = tempCompanyName[3:]
-            jobDetails['jobRole'] = soup.find('h1', class_='app-title').text.strip() if soup.find('h1', class_='app-title') else jobDetails['jobRole']
-            jobDetails['location'] = soup.find('div', class_='location').text.strip() if soup.find('div', class_='location') else jobDetails['location']
+            tempCompanyName = soup.find('span', class_='company-name').text.strip() if soup.find('span', class_='company-name') else jobDetails['Company Name']
+            jobDetails['Company Name'] = tempCompanyName[3:]
+            jobDetails['Job Title'] = soup.find('h1', class_='app-title').text.strip() if soup.find('h1', class_='app-title') else jobDetails['Job Title']
+            jobDetails['Location'] = soup.find('div', class_='Location').text.strip() if soup.find('div', class_='Location') else jobDetails['Location']
 
-            if jobDetails['companyName'] == "" or jobDetails['companyName'] == "N/A": 
+            # if no name found, then extract it from the url
+            if jobDetails['Company Name'] == "" or jobDetails['Company Name'] == "N/A": 
                 pathParts = url.split('/')
-                jobDetails['companyName'] = pathParts[3]
+                jobDetails['Company Name'] = pathParts[3]
 
         elif 'lever' in url:
-            # Extract company name and role title from the title tag
+            # extract company name and job title from the title tag
             titleTag = soup.find('title').text if soup.find('title') else ''
             if titleTag:
                 parts = titleTag.split(' - ')
                 
-                jobDetails['companyName'] = parts[0].strip()
-                jobDetails['jobRole'] = parts[1].strip()
+                jobDetails['Company Name'] = parts[0].strip()
+                jobDetails['Job Title'] = parts[1].strip()
 
-                if jobDetails['companyName'] == "" or jobDetails['companyName'] == "N/A": 
+                # if no name found, then extract it from the url
+                if jobDetails['Company Name'] == "" or jobDetails['Company Name'] == "N/A": 
                     pathParts = url.split('/')
-                    jobDetails['companyName'] = pathParts[3]
+                    jobDetails['Company Name'] = pathParts[3]
             
-            # Extract location from the div with class including "location"
+            # extract location information
             location_tag = soup.find('div', class_='posting-categories')
             if location_tag:
-                location_div = location_tag.find('div', class_='location')
+                location_div = location_tag.find('div', class_='Location')
                 if location_div:
-                    jobDetails['location'] = location_div.text.strip()
+                    jobDetails['Location'] = location_div.text.strip()
         
         return jobDetails
     else:
-        # print(f"Failed to retrieve the job page for URL: {url}")
+        # failed to retreive the URL
+        # print(f"Failed to retrieve the job page for URL: {url}") # (DEBUG PRINT)
         return None
 
 def inUSA(location):
@@ -118,6 +124,7 @@ def inUSA(location):
     if location == 'N/A': 
         return True
         
+    # split the location, and check each word to see if its in the keywords
     delimiters = [",", "/", "-","(", ")"]
     pattern = '|'.join(map(re.escape, delimiters))
     words = re.split(pattern, location)
@@ -130,34 +137,49 @@ def isRelevantRole(jobRole):
     if jobRole == 'N/A': 
         return True
     
+    # relevant keywords
     keywords = ["computer", "vision", "perception", "software", "machine", "learning", 
                 "artificial", "intelligence", "nlp", "natural", "language", "processing", 
                 "llm", "cv", "development", "ai", "ml", "sde", "swe", "backend",
                 "frontend", "fullstack", "full", "stack", "architect", "researcher",
                  "engineer", "scientist", "devops", "mlops", "cloud", "system", "systems"]
+
+    # keywords to ignore
     ignore = ["staff", "sr.", "sr", "senior", "manager", "lead", "principal", "director", "sales",
-              "head", "mechanical", "ii", "iii", "iv", "l2", "l3", "management", "consultant", "phd"]
+              "head", "mechanical", "ii", "iii", "iv", "l2", "l3", "2", "3", "4", "management", 
+              "consultant", "phd"]
 
     delimiters = [",", "/", "-","(", ")", " "]
     pattern = '|'.join(map(re.escape, delimiters))
     words = re.split(pattern, jobRole)
+
     isMatchingWord = False
+    
+    # iterate through delimited words in job role
+    # if job role contains a single "ignore" word, return false
+    # if no "ignore" words, and >=1 relevant keywords, return true
     for word in words:
         if word.lower() in ignore: 
             return False
         else: 
             if word.lower() in keywords:
                 isMatchingWord = True
+    
     return isMatchingWord
 
-def saveToExcel(data, filename):
+def saveToExcel(data, details):
     df = pd.DataFrame(data)
+    if details: 
+        filename = 'jobs-{}.xlsx'.format(timePeriod)
+    else: 
+        filename = 'jobsNoDetails-{}.xlsx'.format(timePeriod)
     df.to_excel(filename, index=False)
+    print("Data saved to {}".format(filename))
 
 query = "(intitle:engineer OR intitle:scientist OR intitle:researcher OR intitle:architect) site:lever.co OR site:greenhouse.io -intitle:staff -intitle:senior -intitle:manager -intitle:lead -intitle:principal -intitle:director"
 
-numResults = input("Enter the number of results: ")
-timePeriod = input("How recent should the results be: ")
+numResults = input("How many results to fetch ('max', or an integer > 0): ")
+timePeriod = input("How recent should the results be (h-hour, d-day, w-week, m-month, y-year): ")
 
 resultsPerPage = 100  # As google generally returns atmost 100 results at a time
 
@@ -192,8 +214,8 @@ jobListNoDetails = []
 for url in urls:
     jobInfo = getJobInfo(url)
     if jobInfo:
-        if inUSA(jobInfo['location']) and isRelevantRole(jobInfo['jobRole']):
-            if jobInfo['jobRole'] != "N/A": 
+        if inUSA(jobInfo['Location']) and isRelevantRole(jobInfo['Job Title']):
+            if jobInfo['Job Title'] != "N/A": 
                 jobList.append(jobInfo)   
             else: 
                 jobListNoDetails.append(jobInfo)
@@ -201,6 +223,5 @@ for url in urls:
 print(len(jobList), " relevant jobs found!")
 print(len(jobListNoDetails), " relevant (maybe) jobs found!")
 
-saveToExcel(jobList, 'jobs.xlsx')
-saveToExcel(jobListNoDetails, 'jobsNoDetails.xlsx')
-print("Job listings to jobs.xlsx and jobsNoDetails.xlsx")
+saveToExcel(jobList, details=True)
+saveToExcel(jobListNoDetails, details=False)
