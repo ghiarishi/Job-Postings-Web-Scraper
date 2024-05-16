@@ -84,8 +84,7 @@ def getJobInfo(url):
             tempCompanyName = soup.find('span', class_='company-name').text.strip() if soup.find('span', class_='company-name') else jobDetails['Company Name']
             jobDetails['Company Name'] = tempCompanyName[3:]
             jobDetails['Job Title'] = soup.find('h1', class_='app-title').text.strip() if soup.find('h1', class_='app-title') else jobDetails['Job Title']
-            jobDetails['Location'] = soup.find('div', class_='Location').text.strip() if soup.find('div', class_='Location') else jobDetails['Location']
-
+            jobDetails['Location'] = soup.find('div', class_='location').text.strip() if soup.find('div', class_='location') else jobDetails['Location']
             # if no name found, then extract it from the url
             if jobDetails['Company Name'] == "" or jobDetails['Company Name'] == "N/A": 
                 pathParts = url.split('/')
@@ -108,7 +107,7 @@ def getJobInfo(url):
             # extract location information
             location_tag = soup.find('div', class_='posting-categories')
             if location_tag:
-                location_div = location_tag.find('div', class_='Location')
+                location_div = location_tag.find('div', class_='location')
                 if location_div:
                     jobDetails['Location'] = location_div.text.strip()
         
@@ -179,7 +178,15 @@ def saveToExcel(data, details):
 query = "(intitle:engineer OR intitle:scientist OR intitle:researcher OR intitle:architect) site:lever.co OR site:greenhouse.io -intitle:staff -intitle:senior -intitle:manager -intitle:lead -intitle:principal -intitle:director"
 
 numResults = input("How many results to fetch ('max', or an integer > 0): ")
+if len(numResults) == 0: # default values
+    numResults = "max"
+    print("Set to default: max")
+    
 timePeriod = input("How recent should the results be (h-hour, d-day, w-week, m-month, y-year): ")
+if len(timePeriod) == 0: # default values
+    timePeriod = "d"
+    print("Set to default: d")
+
 
 resultsPerPage = 100  # As google generally returns atmost 100 results at a time
 
@@ -191,11 +198,12 @@ if numResults == "max":
     while True:
         results = doGoogleSearch(query, resultsPerPage, timePeriod, i*resultsPerPage)
         urls.extend(results)
-        print(f"Fetched {len(results)} results starting from {i*resultsPerPage}")
+        # print(f"Fetched {len(results)} results starting from {i*resultsPerPage}")
         time.sleep(2) # get by google rate limit
         if len(results) < resultsPerPage: 
             break
         i+=1
+    print((i*100) + len(results), " results fetched.")
 
 # if number given, continue fetching till number reached
 else: 
@@ -204,9 +212,10 @@ else:
         resultsToReturn = min(remaining,resultsPerPage)
         results = doGoogleSearch(query, resultsToReturn, timePeriod, start*resultsPerPage)
         urls.extend(results)
-        print(f"Fetched {len(results)} results starting from {start*resultsPerPage}")
+        # print(f"Fetched {len(results)} results starting from {start*resultsPerPage}")
         remaining -= resultsToReturn
         time.sleep(2) # get by google rate limit
+    print(numResults, " results fetched.")
 
 jobList = []
 jobListNoDetails = []
