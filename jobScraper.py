@@ -12,17 +12,15 @@ keywordsDict = {
             "api", "platform", "site"],
 
     'aiml' : ["machine", "learning", "artificial", "intelligence", "ai", "ml", "mlops",
-            "cloud", "devops", "generative", "deep", "data"],
+            "cloud", "devops", "generative", "deep", "data", "applied"],
 
     'cv' : ["computer", "vision", "perception", "cv", "image", "object", "detection",
             "autonomous"],
 
-    # 'robo' : ["robotics", "robot", "mechatronics", "automation", "autonomous"],
-
     'nlp' : ["nlp", "natural", "language", "processing", "llm", "generative", "linguist", 
-            "language"],
-                                        
-    'general' : ["architect", "researcher", "engineer", "scientist", "specialist"]
+            "language", "applied"],                  
+    
+    # 'robo' : ["robotics", "robot", "mechatronics", "automation", "autonomous"],
 }
 
 # determine which roles to add to the list based on user input
@@ -184,7 +182,7 @@ def isRelevantRole(jobRole, keywords):
     ignore = ["staff", "sr.", "sr", "senior", "manager", "lead", "chief", "principal", "director",
               "sales", "head", "mechanical", "ii", "iii", "iv", "l2", "l3", "2", "3", "4", 
               "management", "consultant", "phd", "manufacturing", "law", "maintenance", 
-              "construction"]
+              "construction", "clearance"]
 
     delimiters = [",", "/", "-","(", ")", " "]
     pattern = '|'.join(map(re.escape, delimiters))
