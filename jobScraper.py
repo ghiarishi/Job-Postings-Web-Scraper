@@ -1,27 +1,28 @@
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urlsplit
 import urllib.parse
 import pandas as pd
 import re
 import time
 import math
-from itertools import chain
 
 keywordsDict = {
     'sde' : ["software", "development", "sde", "swe", "backend", "frontend", "fullstack",
-            "full", "stack", "front", "system", "systems", "cloud", "devops"],
+            "full", "stack", "front", "system", "systems", "cloud", "devops", "application",
+            "api", "platform", "site"],
 
     'aiml' : ["machine", "learning", "artificial", "intelligence", "ai", "ml", "mlops",
-            "cloud", "devops", "generative", "deep"],
+            "cloud", "devops", "generative", "deep", "data"],
 
-    'cv' : ["computer", "vision", "perception", "cv"],
+    'cv' : ["computer", "vision", "perception", "cv", "image", "object", "detection",
+            "autonomous"],
 
-    'robo' : ["robotics", "robot", "mechatronics"],
+    # 'robo' : ["robotics", "robot", "mechatronics", "automation", "autonomous"],
 
-    'nlp' : ["nlp", "natural", "language", "processing", "llm", "generative"],
+    'nlp' : ["nlp", "natural", "language", "processing", "llm", "generative", "linguist", 
+            "language"],
                                         
-    'general' : ["architect", "researcher", "engineer", "scientist"]
+    'general' : ["architect", "researcher", "engineer", "scientist", "specialist"]
 }
 
 # determine which roles to add to the list based on user input
@@ -39,7 +40,7 @@ def selectRoles(whichRoles):
                 keywords.extend(keywordsDict[role])
             else:
                 print(f"Unsupported role: {role}")
-        # keywords.extend(keywordsDict['general'])
+        keywords.extend(keywordsDict['general'])
     return keywords
 
 # perform a google search on the query provided
@@ -108,51 +109,54 @@ def cleanURL(job_url):
 
 # retreive job title, company name, location from the page's html
 def getJobInfo(url):
-    response = requests.get(url)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, 'html.parser')
-        jobDetails = {
-            'Company Name': 'N/A',
-            'Job Title': 'N/A',
-            'Location': 'N/A',
-            'url': url
-        }
+    try:
+        response = requests.get(url, allow_redirects=False)  # Disable redirects
+        if response.status_code in [301, 302, 303, 307, 308]:  # Check for redirect response codes
+            # debug print
+            # print("Redirect detected but not followed:", response.headers['Location'])
+            return None
+        elif response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            jobDetails = {
+                'Company Name': 'N/A',
+                'Job Title': 'N/A',
+                'Location': 'N/A',
+                'url': url
+            }
 
-        if 'greenhouse' in url:
-            tempCompanyName = soup.find('span', class_='company-name').text.strip() if soup.find('span', class_='company-name') else jobDetails['Company Name']
-            jobDetails['Company Name'] = tempCompanyName[3:]
-            jobDetails['Job Title'] = soup.find('h1', class_='app-title').text.strip() if soup.find('h1', class_='app-title') else jobDetails['Job Title']
-            jobDetails['Location'] = soup.find('div', class_='location').text.strip() if soup.find('div', class_='location') else jobDetails['Location']
-            # if no name found, then extract it from the url
-            if jobDetails['Company Name'] == "" or jobDetails['Company Name'] == "N/A": 
-                pathParts = url.split('/')
-                jobDetails['Company Name'] = pathParts[3]
-
-        elif 'lever' in url:
-            # extract company name and job title from the title tag
-            titleTag = soup.find('title').text if soup.find('title') else ''
-            if titleTag:
-                parts = titleTag.split(' - ')
-                
-                jobDetails['Company Name'] = parts[0].strip()
-                jobDetails['Job Title'] = parts[1].strip()
-
+            if 'greenhouse' in url:
+                tempCompanyName = soup.find('span', class_='company-name').text.strip() if soup.find('span', class_='company-name') else jobDetails['Company Name']
+                jobDetails['Company Name'] = tempCompanyName[3:]
+                jobDetails['Job Title'] = soup.find('h1', class_='app-title').text.strip() if soup.find('h1', class_='app-title') else jobDetails['Job Title']
+                jobDetails['Location'] = soup.find('div', class_='location').text.strip() if soup.find('div', class_='location') else jobDetails['Location']
                 # if no name found, then extract it from the url
                 if jobDetails['Company Name'] == "" or jobDetails['Company Name'] == "N/A": 
                     pathParts = url.split('/')
                     jobDetails['Company Name'] = pathParts[3]
-            
-            # extract location information
-            location_tag = soup.find('div', class_='posting-categories')
-            if location_tag:
-                location_div = location_tag.find('div', class_='location')
-                if location_div:
-                    jobDetails['Location'] = location_div.text.strip()
-        
-        return jobDetails
-    else:
-        # failed to retreive the URL
-        # print(f"Failed to retrieve the job page for URL: {url}") # (DEBUG PRINT)
+
+            elif 'lever' in url:
+                # extract company name and job title from the title tag
+                titleTag = soup.find('title').text if soup.find('title') else ''
+                if titleTag:
+                    parts = titleTag.split(' - ')
+                    
+                    jobDetails['Company Name'] = parts[0].strip()
+                    jobDetails['Job Title'] = parts[1].strip()
+
+                    # if no name found, then extract it from the url
+                    if jobDetails['Company Name'] == "" or jobDetails['Company Name'] == "N/A": 
+                        pathParts = url.split('/')
+                        jobDetails['Company Name'] = pathParts[3]
+                
+                # extract location information
+                location_tag = soup.find('div', class_='posting-categories')
+                if location_tag:
+                    location_div = location_tag.find('div', class_='location')
+                    if location_div:
+                        jobDetails['Location'] = location_div.text.strip()
+            return jobDetails
+    except requests.exceptions.RequestException as e:
+        print(f"HTTP request failed: {e}")
         return None
 
 # check if the location is based in the USA
@@ -177,9 +181,10 @@ def isRelevantRole(jobRole, keywords):
         return True
 
     # keywords to ignore
-    ignore = ["staff", "sr.", "sr", "senior", "manager", "lead", "principal", "director", "sales",
-              "head", "mechanical", "ii", "iii", "iv", "l2", "l3", "2", "3", "4", "management", 
-              "consultant", "phd", "manufacturing", "law", "maintenance", "construction"]
+    ignore = ["staff", "sr.", "sr", "senior", "manager", "lead", "chief", "principal", "director",
+              "sales", "head", "mechanical", "ii", "iii", "iv", "l2", "l3", "2", "3", "4", 
+              "management", "consultant", "phd", "manufacturing", "law", "maintenance", 
+              "construction"]
 
     delimiters = [",", "/", "-","(", ")", " "]
     pattern = '|'.join(map(re.escape, delimiters))
