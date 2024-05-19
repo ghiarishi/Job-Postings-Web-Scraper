@@ -63,7 +63,7 @@ Job Postings Web Scraper is a Python-based tool designed to scrape job listings 
 
 ## Authors
 
-- Rishi Ghia - *Initial work* - [ghiarishi](https://github.com/ghiarishi)
+- Rishi Ghia - [ghiarishi](https://github.com/ghiarishi)
 
 ## License
 
