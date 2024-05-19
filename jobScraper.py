@@ -107,53 +107,49 @@ def cleanURL(job_url):
     return cleaned_url
 
 # retreive job title, company name, location from the page's html
-def getJobInfo(url): 
+def getJobInfo(url):
     try:
-        response = requests.get(url, allow_redirects=False)  # Disable redirects
-        if response.status_code in [301, 302, 303, 307, 308]:  # Check for redirect response codes
-            # debug print
-            # print("Redirect detected but not followed:", response.headers['Location'])
-            return None
-        elif response.status_code == 200:
+        response = requests.get(url)
+        if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
             jobDetails = {
                 'Company Name': 'N/A',
                 'Job Title': 'N/A',
                 'Location': 'N/A',
+                'Job Description': 'N/A',  
                 'url': url
             }
 
             if 'greenhouse' in url:
-                tempCompanyName = soup.find('span', class_='company-name').text.strip() if soup.find('span', class_='company-name') else jobDetails['Company Name']
-                jobDetails['Company Name'] = tempCompanyName[3:]
-                jobDetails['Job Title'] = soup.find('h1', class_='app-title').text.strip() if soup.find('h1', class_='app-title') else jobDetails['Job Title']
-                jobDetails['Location'] = soup.find('div', class_='location').text.strip() if soup.find('div', class_='location') else jobDetails['Location']
-                # if no name found, then extract it from the url
-                if jobDetails['Company Name'] == "" or jobDetails['Company Name'] == "N/A": 
-                    pathParts = url.split('/')
-                    jobDetails['Company Name'] = pathParts[3]
+                jobDetails['Company Name'] = (soup.find('span', class_='company-name').text.strip() 
+                                              if soup.find('span', class_='company-name') else 'N/A')[3:]
+                jobDetails['Job Title'] = (soup.find('h1', class_='app-title').text.strip() 
+                                           if soup.find('h1', class_='app-title') else 'N/A')
+                jobDetails['Location'] = (soup.find('div', class_='location').text.strip() 
+                                          if soup.find('div', class_='location') else 'N/A')
+                jobDescription_tag = soup.find('div', id='content')
+                jobDetails['Job Description'] = jobDescription_tag.text.strip() if jobDescription_tag else 'N/A'
 
             elif 'lever' in url:
-                # extract company name and job title from the title tag
                 titleTag = soup.find('title').text if soup.find('title') else ''
                 if titleTag:
                     parts = titleTag.split(' - ')
-                    
-                    jobDetails['Company Name'] = parts[0].strip()
-                    jobDetails['Job Title'] = parts[1].strip()
+                    if len(parts) >= 2:
+                        jobDetails['Company Name'] = parts[0].strip()
+                        jobDetails['Job Title'] = parts[1].strip()
 
-                    # if no name found, then extract it from the url
-                    if jobDetails['Company Name'] == "" or jobDetails['Company Name'] == "N/A": 
-                        pathParts = url.split('/')
-                        jobDetails['Company Name'] = pathParts[3]
-                
-                # extract location information
                 location_tag = soup.find('div', class_='posting-categories')
                 if location_tag:
                     location_div = location_tag.find('div', class_='location')
-                    if location_div:
-                        jobDetails['Location'] = location_div.text.strip()
+                    jobDetails['Location'] = location_div.text.strip() if location_div else 'N/A'
+
+                jobDescription_tag = soup.find('div', attrs={'data-qa': 'job-description'})
+                jobDetails['Job Description'] = jobDescription_tag.text.strip() if jobDescription_tag else 'N/A'
+
             return jobDetails
+        else:
+            print(f"Failed to retrieve page: {response.status_code}")
+            return None
     except requests.exceptions.RequestException as e:
         print(f"HTTP request failed: {e}")
         return None
@@ -175,8 +171,8 @@ def inUSA(location):
     return False
 
 # check if the role is relevant against selected keywords
-def isRelevantRole(jobRole, keywords):
-    if jobRole == 'N/A': 
+def isRelevantRole(jobTitle, keywords):
+    if jobTitle == 'N/A': # and jobDescription == 'N/A': 
         return True
 
     # keywords to ignore
@@ -187,7 +183,12 @@ def isRelevantRole(jobRole, keywords):
 
     delimiters = [",", "/", "-","(", ")", " "]
     pattern = '|'.join(map(re.escape, delimiters))
-    words = re.split(pattern, jobRole)
+    
+    words = re.split(pattern, jobTitle)
+
+    # # Combine job role and description for keyword checking
+    # combined_text = f"{jobTitle} {jobDescription}".lower()
+    # words = re.split(pattern, combined_text)
 
     isMatchingWord = False
     
@@ -280,8 +281,8 @@ for url in urls:
     jobInfo = getJobInfo(url)
     if jobInfo:
         if inUSA(jobInfo['Location']) and isRelevantRole(jobInfo['Job Title'], keywords):
-            if jobInfo['Job Title'] != "N/A": 
-                jobList.append(jobInfo)   
+            if jobInfo['Job Title'] != 'N/A': 
+                jobList.append(jobInfo)  
             else: 
                 jobListNoDetails.append(jobInfo)
 
