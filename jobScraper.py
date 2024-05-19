@@ -5,6 +5,8 @@ import pandas as pd
 import re
 import time
 import math
+import xlsxwriter
+from datetime import datetime
 
 keywordsDict = {
     'sde' : ["software", "development", "sde", "swe", "backend", "frontend", "fullstack",
@@ -20,7 +22,7 @@ keywordsDict = {
     'nlp' : ["nlp", "natural", "language", "processing", "llm", "generative", "linguist", 
             "language", "applied"],                  
     
-    # 'robo' : ["robotics", "robot", "mechatronics", "automation", "autonomous"],
+    'robo' : ["robotics", "robot", "mechatronics", "automation", "autonomous"],
 }
 
 # determine which roles to add to the list based on user input
@@ -38,7 +40,6 @@ def selectRoles(whichRoles):
                 keywords.extend(keywordsDict[role])
             else:
                 print(f"Unsupported role: {role}")
-        keywords.extend(keywordsDict['general'])
     return keywords
 
 # perform a google search on the query provided
@@ -106,7 +107,7 @@ def cleanURL(job_url):
     return cleaned_url
 
 # retreive job title, company name, location from the page's html
-def getJobInfo(url):
+def getJobInfo(url): 
     try:
         response = requests.get(url, allow_redirects=False)  # Disable redirects
         if response.status_code in [301, 302, 303, 307, 308]:  # Check for redirect response codes
@@ -202,14 +203,22 @@ def isRelevantRole(jobRole, keywords):
     
     return isMatchingWord
 
-def saveToExcel(data, details):
-    df = pd.DataFrame(data)
-    if details: 
-        filename = 'jobs-{}.xlsx'.format(timePeriod)
-    else: 
-        filename = 'jobsNoDetails-{}.xlsx'.format(timePeriod)
-    df.to_excel(filename, index=False)
-    print("Data saved to {}".format(filename))
+def saveToExcel(jobList, jobListNoDetails, timePeriod):
+    current_time = datetime.now().strftime("%H-%M, %d-%m-%Y")
+
+    # date and time in filename
+    filename = f'jobListings-{timePeriod}-{current_time}.xlsx'
+
+    # create dataframes
+    df_jobs = pd.DataFrame(jobList)
+    df_jobs_no_details = pd.DataFrame(jobListNoDetails)
+
+    # write to the same excel file, different sheets
+    with pd.ExcelWriter(filename, engine='xlsxwriter') as writer:
+        df_jobs.to_excel(writer, sheet_name='Relevant Jobs', index=False)
+        df_jobs_no_details.to_excel(writer, sheet_name='Relevant (Maybe) Jobs', index=False)
+
+    print(f"Data saved to {filename}")
 
 query = "(intitle:engineer OR intitle:scientist OR intitle:researcher OR intitle:architect) site:lever.co OR site:greenhouse.io -intitle:staff -intitle:senior -intitle:manager -intitle:lead -intitle:principal -intitle:director"
 
@@ -260,6 +269,9 @@ else:
         time.sleep(2) # get by google rate limit
     print(numResults, " results fetched.")
 
+urls = list(set(urls))
+print("Duplicates removed, total unique results fetched:", len(urls))
+
 jobList = []
 jobListNoDetails = []
 
@@ -273,8 +285,11 @@ for url in urls:
             else: 
                 jobListNoDetails.append(jobInfo)
 
+# sort the jobs by company name (alphabetically)
+jobList = sorted(jobList, key=lambda x: x['Company Name'])
+jobListNoDetails = sorted(jobListNoDetails, key=lambda x: x['Company Name'])
+
 print(len(jobList), " relevant jobs found!")
 print(len(jobListNoDetails), " relevant (maybe) jobs found!")
 
-saveToExcel(jobList, details=True)
-saveToExcel(jobListNoDetails, details=False)
+saveToExcel(jobList, jobListNoDetails, timePeriod)
