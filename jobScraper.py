@@ -43,7 +43,7 @@ def selectRoles(whichRoles):
     return keywords
 
 # perform a google search on the query provided
-def doGoogleSearch(query, numResults, timePeriod, start):
+def doGoogleSearch(query, numResults, timePeriod, start):   
 
     # construct search query
     searchQuery = urllib.parse.quote_plus(query)
@@ -148,7 +148,7 @@ def getJobInfo(url):
 
             return jobDetails
         else:
-            print(f"Failed to retrieve page: {response.status_code}")
+            # print(f"Failed to retrieve page: {response.status_code}")
             return None
     except requests.exceptions.RequestException as e:
         print(f"HTTP request failed: {e}")
