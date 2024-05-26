@@ -9,20 +9,29 @@ import xlsxwriter
 from datetime import datetime
 
 keywordsDict = {
-    'sde' : ["software", "development", "sde", "swe", "backend", "frontend", "fullstack",
-            "full", "stack", "front", "system", "systems", "cloud", "devops", "application",
-            "api", "platform", "site"],
+    'sde' : ["software development", "software engineer", "software engineering", 
+             "software developer", "backend engineer", "sde", "swe", "backend", 
+             "frontend", "fullstack", "full", "stack", "front", "system", "systems",
+             "cloud", "devops", "application", "api", "platform", "site"],
 
-    'aiml' : ["machine", "learning", "artificial", "intelligence", "ai", "ml", "mlops",
+    'aiml' : ["machine learning", "artificial intelligence", "ai", "ml", "mlops",
             "cloud", "devops", "generative", "deep", "data", "applied"],
 
     'cv' : ["computer", "vision", "perception", "cv", "image", "object", "detection",
             "autonomous"],
 
-    'nlp' : ["nlp", "natural", "language", "processing", "llm", "generative", "linguist", 
+    'nlp' : ["nlp", "natural language processing", "llm", "generative", "linguist", 
             "language", "applied"],                  
     
     'robo' : ["robotics", "robot", "mechatronics", "automation", "autonomous"],
+}
+
+ignoreDict = {
+    'title' : ["staff", "sr.", "sr", "senior", "manager", "lead", "chief", "principal", "director",
+              "sales", "head", "mechanical", "ii", "iii", "iv", "l2", "l3", "2", "3", "4", 
+              "management", "consultant", "phd", "manufacturing", "law", "maintenance", 
+              "construction", "clearance"],
+    'description' : ["clearance", "itar"]
 }
 
 # determine which roles to add to the list based on user input
@@ -171,38 +180,23 @@ def inUSA(location):
     return False
 
 # check if the role is relevant against selected keywords
-def isRelevantRole(jobTitle, keywords):
-    if jobTitle == 'N/A': # and jobDescription == 'N/A': 
+def isRelevantRole(jobTitle, jobDescription, keywords):
+    if jobTitle == 'N/A' and jobDescription == 'N/A': 
         return True
+        
+    titleLower = jobTitle.lower()
+    descriptionLower = jobDescription.lower()
 
-    # keywords to ignore
-    ignore = ["staff", "sr.", "sr", "senior", "manager", "lead", "chief", "principal", "director",
-              "sales", "head", "mechanical", "ii", "iii", "iv", "l2", "l3", "2", "3", "4", 
-              "management", "consultant", "phd", "manufacturing", "law", "maintenance", 
-              "construction", "clearance"]
-
-    delimiters = [",", "/", "-","(", ")", " "]
-    pattern = '|'.join(map(re.escape, delimiters))
-    
-    words = re.split(pattern, jobTitle)
-
-    # # Combine job role and description for keyword checking
-    # combined_text = f"{jobTitle} {jobDescription}".lower()
-    # words = re.split(pattern, combined_text)
-
-    isMatchingWord = False
-    
-    # iterate through delimited words in job role
+    # iterate through delimited words in job role and description
     # if job role contains a single "ignore" word, return false
     # if no "ignore" words, and >=1 relevant keywords, return true
-    for word in words:
-        if word.lower() in ignore: 
-            return False
-        else: 
-            if word.lower() in keywords:
-                isMatchingWord = True
+    if any(ignored in titleLower for ignored in ignoreDict['title']):
+        return False
+    if any(ignored in descriptionLower for ignored in ignoreDict['description']):
+        return False
     
-    return isMatchingWord
+    return any(keyword.lower() in titleLower for keyword in keywords) or any(keyword.lower() in descriptionLower for keyword in keywords)
+    
 
 def saveToExcel(jobList, jobListNoDetails, timePeriod):
     current_time = datetime.now().strftime("%H-%M, %d-%m-%Y")
@@ -221,76 +215,85 @@ def saveToExcel(jobList, jobListNoDetails, timePeriod):
 
     print(f"Data saved to {filename}")
 
-query = "(intitle:engineer OR intitle:scientist OR intitle:researcher OR intitle:architect) site:lever.co OR site:greenhouse.io -intitle:staff -intitle:senior -intitle:manager -intitle:lead -intitle:principal -intitle:director"
+# main function
+def scrapeJobsMain(numResults, timePeriod, whichRoles): 
+
+    query = "(intitle:engineer OR intitle:scientist OR intitle:researcher OR intitle:architect) site:lever.co OR site:greenhouse.io -intitle:staff -intitle:senior -intitle:manager -intitle:lead -intitle:principal -intitle:director"
+
+    keywords = selectRoles(whichRoles)
+
+    resultsPerPage = 100  # As google generally returns atmost 100 results at a time
+
+    urls = []
+
+    print("Fetching results...")
+    # if max, then stop fetching jobs when under 100 are returned
+    if numResults == "max": 
+        i = 0
+        while True:
+            results = doGoogleSearch(query, resultsPerPage, timePeriod, i*resultsPerPage)
+            urls.extend(results)
+            # print(f"Fetched {len(results)} results starting from {i*resultsPerPage}")
+            time.sleep(2) # get by google rate limit
+            if len(results) < resultsPerPage: 
+                break
+            i+=1
+        print((i*100) + len(results), " results fetched.")
+
+    # if number given, continue fetching till number reached
+    else: 
+        remaining = int(numResults)
+        for start in range(math.ceil(int(numResults)/resultsPerPage)):
+            resultsToReturn = min(remaining,resultsPerPage)
+            results = doGoogleSearch(query, resultsToReturn, timePeriod, start*resultsPerPage)
+            urls.extend(results)
+            # print(f"Fetched {len(results)} results starting from {start*resultsPerPage}")
+            remaining -= resultsToReturn
+            time.sleep(2) # get by google rate limit
+            
+        print(numResults, " results fetched.")
+
+    urls = list(set(urls))
+
+    print("Duplicates removed, total unique results fetched:", len(urls))
+
+    jobList = []
+    jobListNoDetails = []
+
+    print("Retreiving job information...")
+    for url in urls:
+        jobInfo = getJobInfo(url)
+        if jobInfo:
+            if inUSA(jobInfo['Location']) and isRelevantRole(jobInfo['Job Title'], jobInfo['Job Description'], keywords):
+                if jobInfo['Job Title'] != 'N/A': 
+                    jobList.append(jobInfo)  
+                else: 
+                    jobListNoDetails.append(jobInfo)
+
+    # sort the jobs by company name (alphabetically)
+    jobList = sorted(jobList, key=lambda x: x['Company Name'])
+    jobListNoDetails = sorted(jobListNoDetails, key=lambda x: x['Company Name'])
+
+    print(len(jobList), " relevant jobs found!")
+    print(len(jobListNoDetails), " relevant (maybe) jobs found!")
+
+    saveToExcel(jobList, jobListNoDetails, timePeriod)
+
+    return jobList, jobListNoDetails
 
 numResults = input("How many results to fetch ('max', or an integer > 0): ")
 if len(numResults) == 0: # default values
-    numResults = "max"
-    print("Set to default: max")
-    
+        numResults = "max"
+        print("Set to default: max")
+          
 timePeriod = input("How recent should the results be (h-hour, d-day, w-week, m-month, y-year): ")
 if len(timePeriod) == 0: # default values
-    timePeriod = "d"
-    print("Set to default: d")
+        timePeriod = "d"
+        print("Set to default: d")
 
 whichRoles = input("What roles are you interested in (sde, aiml, cv, nlp, robo, all): ")
 if len(whichRoles) == 0: # default values
-    whichRoles = "all"
-    print("Set to default: all")  
+        whichRoles = "all"
+        print("Set to default: all")
 
-keywords = selectRoles(whichRoles)
-
-resultsPerPage = 100  # As google generally returns atmost 100 results at a time
-
-urls = []
-
-print("Fetching results...")
-# if max, then stop fetching jobs when under 100 are returned
-if numResults == "max": 
-    i = 0
-    while True:
-        results = doGoogleSearch(query, resultsPerPage, timePeriod, i*resultsPerPage)
-        urls.extend(results)
-        # print(f"Fetched {len(results)} results starting from {i*resultsPerPage}")
-        time.sleep(2) # get by google rate limit
-        if len(results) < resultsPerPage: 
-            break
-        i+=1
-    print((i*100) + len(results), " results fetched.")
-
-# if number given, continue fetching till number reached
-else: 
-    remaining = int(numResults)
-    for start in range(math.ceil(int(numResults)/resultsPerPage)):
-        resultsToReturn = min(remaining,resultsPerPage)
-        results = doGoogleSearch(query, resultsToReturn, timePeriod, start*resultsPerPage)
-        urls.extend(results)
-        # print(f"Fetched {len(results)} results starting from {start*resultsPerPage}")
-        remaining -= resultsToReturn
-        time.sleep(2) # get by google rate limit
-    print(numResults, " results fetched.")
-
-urls = list(set(urls))
-print("Duplicates removed, total unique results fetched:", len(urls))
-
-jobList = []
-jobListNoDetails = []
-
-print("Retreiving job information...")
-for url in urls:
-    jobInfo = getJobInfo(url)
-    if jobInfo:
-        if inUSA(jobInfo['Location']) and isRelevantRole(jobInfo['Job Title'], keywords):
-            if jobInfo['Job Title'] != 'N/A': 
-                jobList.append(jobInfo)  
-            else: 
-                jobListNoDetails.append(jobInfo)
-
-# sort the jobs by company name (alphabetically)
-jobList = sorted(jobList, key=lambda x: x['Company Name'])
-jobListNoDetails = sorted(jobListNoDetails, key=lambda x: x['Company Name'])
-
-print(len(jobList), " relevant jobs found!")
-print(len(jobListNoDetails), " relevant (maybe) jobs found!")
-
-saveToExcel(jobList, jobListNoDetails, timePeriod)
+scrapeJobsMain(numResults, timePeriod, whichRoles)
