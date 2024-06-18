@@ -31,7 +31,7 @@ ignoreDict = {
               "sales", "head", "mechanical", "ii", "iii", "iv", "l2", "l3", "2", "3", "4", 
               "management", "consultant", "phd", "manufacturing", "law", "maintenance", 
               "construction", "clearance", "structures", "helpdesk", "electrical", "propulsion",
-                        ],
+              "solution", "solutions", "customer"],
     'description' : ["clearance", "itar"]
 }
 
@@ -283,7 +283,7 @@ def scrapeJobsMain(numResults, timePeriod, whichRoles):
     # sort the jobs by company name (alphabetically)
     jobList = sorted(jobList, key=lambda x: x['Company Name'])
     jobListNoDetails = sorted(jobListNoDetails, key=lambda x: x['Company Name'])
-    jobListNoRejected = sorted(jobListNoRejected, key=lambda x: x['Company Name'])
+    jobListRejected = sorted(jobListRejected, key=lambda x: x['Company Name'])
 
 
     print(len(jobList), " relevant jobs found!")
