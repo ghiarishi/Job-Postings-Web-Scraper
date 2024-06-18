@@ -116,7 +116,7 @@ def cleanURL(job_url):
     
     return cleaned_url
 
-# retreive job title, company name, location from the page's html
+# retreive job title, company name, location from the pages html
 def getJobInfo(url):
     try:
         response = requests.get(url)
