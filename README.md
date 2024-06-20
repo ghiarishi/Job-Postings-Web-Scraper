@@ -1,4 +1,4 @@
-# Job-Postings-Web-Scraper
+# Job Postings Web Scraper
 
 Job Postings Web Scraper is a Python-based tool designed to scrape job listings from Lever and Greenhouse job boards. It retrieves job titles, company names, locations, and job descriptions based on user-defined criteria and saves the results into an Excel file with separate sheets for relevant and potentially relevant job postings.
 
