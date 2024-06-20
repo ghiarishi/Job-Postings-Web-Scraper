@@ -5,6 +5,7 @@ import pandas as pd
 import re
 import time
 import math
+import xlsxwriter
 from datetime import datetime
 
 keywordsDict = {
@@ -203,7 +204,7 @@ def saveToExcel(jobList, jobListNoDetails, jobListRejected, timePeriod):
     current_time = datetime.now().strftime("%H-%M, %d-%m-%Y")
 
     # date and time in filename
-    filename = f'jobListings-{timePeriod}-{current_time}.xlsx'
+    filename = f'/data/jobListings-{timePeriod}-{current_time}.xlsx'
 
     # create dataframes
     df_jobs = pd.DataFrame(jobList)
