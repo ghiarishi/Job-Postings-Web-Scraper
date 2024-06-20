@@ -220,7 +220,22 @@ def saveToExcel(jobList, jobListNoDetails, jobListRejected, timePeriod):
     print(f"Data saved to {filename}")
 
 # main function
-def scrapeJobsMain(numResults, timePeriod, whichRoles): 
+def scrapeJobsMain(): 
+
+    numResults = input("How many results to fetch ('max', or an integer > 0): ")
+    if len(numResults) == 0: # default values
+        numResults = "max"
+        print("Set to default: max")
+            
+    timePeriod = input("How recent should the results be (h-hour, d-day, w-week, m-month, y-year): ")
+    if len(timePeriod) == 0: # default values
+        timePeriod = "d"
+        print("Set to default: d")
+
+    whichRoles = input("What roles are you interested in (sde, aiml, cv, nlp, robo, all): ")
+    if len(whichRoles) == 0: # default values
+        whichRoles = "all"
+        print("Set to default: all")
 
     query = "(intitle:engineer OR intitle:scientist OR intitle:researcher OR intitle:architect) site:lever.co OR site:greenhouse.io -intitle:staff -intitle:senior -intitle:manager -intitle:lead -intitle:principal -intitle:director"
 
@@ -290,21 +305,6 @@ def scrapeJobsMain(numResults, timePeriod, whichRoles):
 
     saveToExcel(jobList, jobListNoDetails, jobListRejected, timePeriod)
 
-    return jobList, jobListNoDetails
+    return jobList, jobListNoDetails, jobListRejected
 
-numResults = input("How many results to fetch ('max', or an integer > 0): ")
-if len(numResults) == 0: # default values
-        numResults = "max"
-        print("Set to default: max")
-          
-timePeriod = input("How recent should the results be (h-hour, d-day, w-week, m-month, y-year): ")
-if len(timePeriod) == 0: # default values
-        timePeriod = "d"
-        print("Set to default: d")
-
-whichRoles = input("What roles are you interested in (sde, aiml, cv, nlp, robo, all): ")
-if len(whichRoles) == 0: # default values
-        whichRoles = "all"
-        print("Set to default: all")
-
-scrapeJobsMain(numResults, timePeriod, whichRoles)
+scrapeJobsMain()
