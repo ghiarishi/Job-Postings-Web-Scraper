@@ -37,8 +37,6 @@ Job Postings Web Scraper is a Python-based tool designed to scrape job listings 
 
 ### Temp Notes:
 
-
-
 2. Input the required information:
    - Number of results to fetch: Enter 'max' to fetch as many results as possible or an integer to specify the exact number.
    - Time period for the results: Specify 'h' for hour, 'd' for day, 'w' for week, 'm' for month, or 'y' for year.
