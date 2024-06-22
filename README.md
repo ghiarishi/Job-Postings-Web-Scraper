@@ -91,4 +91,3 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 - Inspiration and initial concept by Rishi Ghia.
 - Special thanks to the open-source community for the libraries used in this project.
-```
