@@ -13,40 +13,57 @@ Job Postings Web Scraper is a Python-based tool designed to scrape job listings 
 ## Prerequisites
 
 - Python 3.6 or higher
-- Required Python libraries (listed in `requirements.txt`)
+- Required Python libraries (listed in `requirements.txt`) OR Docker
 
-## Installation
-
+## How to run
 1. Clone the repository:
    ```sh
-   git clone https://github.com/yourusername/Job-Postings-Web-Scraper.git
-   cd Job-Postings-Web-Scraper
+   git clone https://github.com/ghiarishi/job-scraper.git
+   cd "enter_path_here\job-scraper"
    ```
 
-2. Install the required packages:
+2. Navigate to the repiository: 
+```sh
+cd "enter_path_here\job-scraper"
+```
+
+### Approach 1
+
+1. Install the required packages:
    ```sh
    pip install -r requirements.txt
    ```
 
-## Usage
-
-1. Run the script:
+2. Run the script:
    ```sh
    python jobScraper.py
    ```
 
-### Temp Notes:
+### Approach 2
+1. Ensure that you have Docker installed on your machine
 
-2. Input the required information:
+2. Build the Docker Image: 
+```sh
+docker build -t job-scraper-container .
+```
+
+3. Run the Docker Image: 
+```
+sh
+docker run -it -v "C:/Users/ghiar/Rishi Ghia/Personal Projects/job-scraper/data:/data" job-scraper-container
+```
+
+## Usage: 
+1. Input the required information:
    - Number of results to fetch: Enter 'max' to fetch as many results as possible or an integer to specify the exact number.
    - Time period for the results: Specify 'h' for hour, 'd' for day, 'w' for week, 'm' for month, or 'y' for year.
    - Roles of interest: Specify roles like 'sde' (Software Development Engineer), 'aiml' (AI/ML), 'cv' (Computer Vision), 'nlp' (Natural Language Processing), 'robo' (Robotics), or 'all' for all roles.
 
-3. Review the results:
+2. Review the results:
    - The script will fetch and display the number of job listings retrieved, remove duplicates, and show the number of relevant and potentially relevant job postings.
 
 4. Output:
-   - The job listings will be saved to an Excel file named in the format `jobListings-<timePeriod>-<HH-MM, DD-MM-YYYY>.xlsx` with two sheets: 'Relevant Jobs' and 'Relevant (Maybe) Jobs'.
+   - The job listings will be saved to an Excel file named in the format `jobListings-<timePeriod>-<HH-MM, DD-MM-YYYY>.xlsx` with two sheets: 'Relevant Jobs' and 'Relevant (Maybe) Jobs', stored in the 'data' directory.
 
 ## Code Overview
 
