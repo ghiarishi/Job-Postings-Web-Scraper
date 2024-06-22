@@ -23,9 +23,9 @@ Job Postings Web Scraper is a Python-based tool designed to scrape job listings 
    ```
 
 2. Navigate to the repiository: 
-```sh
-cd "enter_path_here\job-scraper"
-```
+   ```sh
+   cd "enter_path_here\job-scraper"
+   ```
 
 ### Approach 1
 
@@ -43,15 +43,14 @@ cd "enter_path_here\job-scraper"
 1. Ensure that you have Docker installed on your machine
 
 2. Build the Docker Image: 
-```sh
-docker build -t job-scraper-container .
-```
+   ```sh
+   docker build -t job-scraper-container .
+   ```
 
 3. Run the Docker Image: 
-```
-sh
-docker run -it -v "C:/Users/ghiar/Rishi Ghia/Personal Projects/job-scraper/data:/data" job-scraper-container
-```
+   ```sh
+   docker run -it -v "C:/Users/ghiar/Rishi Ghia/Personal Projects/job-scraper/data:/data" job-scraper-container
+   ```
 
 ## Usage: 
 1. Input the required information:
